@@ -1,5 +1,6 @@
 import argparse
 import json
+from datetime import datetime
 from pathlib import Path
 
 import config
@@ -12,19 +13,18 @@ import score
 
 def run(path):
     apps = loader.load(path)
-    best = 0
+    run_id = datetime.now().isoformat(timespec="seconds")
     rows = []
     for app in apps:
         reply = llm.assess(app["id"], str(app))
         verdicts = reply["criteria"]
         raw = score.raw_score(verdicts)
-        best = max(best, raw)
-        fit = round(raw / best * 10, 1)
+        fit = round(raw / len(config.CRITERIA) * 10, 1)
         gaps = score.missing(verdicts)
         term = guard.anti_thesis(app)
         rec = score.recommend(fit, len(gaps), term)
         inr = cost.cost_inr(reply["tokens_in"], reply["tokens_out"])
-        rows.append({"id": app["id"], "name": app["name"], "fit": fit, "rec": rec,
+        rows.append({"run_id": run_id, "id": app["id"], "name": app["name"], "fit": fit, "rec": rec,
                      "could_not_establish": gaps, "cost_inr": round(inr, 2)})
         Path("reports").mkdir(exist_ok=True)
         Path("reports", app["id"] + ".json").write_text(json.dumps({**rows[-1], "criteria": verdicts}, indent=1))
