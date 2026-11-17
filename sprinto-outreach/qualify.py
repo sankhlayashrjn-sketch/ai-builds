@@ -15,7 +15,10 @@ def qualify(domain, company):
     result = llm.ask("qualify", domain, PROMPT.format(company=company))
     rounds = 0
     while result["needs_more"] and rounds < config.MAX_ROUNDS:
-        more = scrape.fetch(domain, "about")
+        try:
+            more = scrape.fetch(domain, "about")
+        except scrape.ScrapeError:
+            break
         company = {**company, **extract.extract(domain, more)}
         result = llm.ask("qualify_more", domain, PROMPT.format(company=company))
         rounds += 1

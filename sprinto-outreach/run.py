@@ -15,8 +15,15 @@ def run(domains, contacts_path):
     rows = []
     for d in domains:
         t0 = time.time()
-        text = scrape.fetch(d)
-        company = extract.extract(d, text) if text else {}
+        try:
+            text = scrape.fetch(d)
+        except scrape.ScrapeError as e:
+            row = {"domain": d, "score": 0, "qualified": False, "reason": "scrape_failed",
+                   "flagged": True, "error": str(e), "seconds": round(time.time() - t0, 2)}
+            rows.append(row)
+            print(f"{d:22} SCRAPE FAILED - flagged for review: {e}")
+            continue
+        company = extract.extract(d, text)
         q = qualify.qualify(d, company) if company else {"score": 0, "qualified": False, "reason": "no data"}
         row = {"domain": d, "score": q["score"], "qualified": q["qualified"], "reason": q["reason"]}
         if q["qualified"]:
